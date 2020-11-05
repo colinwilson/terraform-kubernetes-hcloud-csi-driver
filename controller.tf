@@ -1,7 +1,7 @@
 # Create CSI Controller StatefulSet
 resource "kubernetes_stateful_set" "hcloud_csi_controller" {
   metadata {
-    name = "hcloud-csi-controller"
+    name      = "hcloud-csi-controller"
     namespace = "kube-system"
   }
 
@@ -13,7 +13,7 @@ resource "kubernetes_stateful_set" "hcloud_csi_controller" {
     }
 
     service_name = "hcloud-csi-controller"
-    replicas               = 1
+    replicas     = 1
 
     template {
       metadata {
@@ -24,11 +24,11 @@ resource "kubernetes_stateful_set" "hcloud_csi_controller" {
 
       spec {
         automount_service_account_token = true # override Terraform's default false - https://github.com/kubernetes/kubernetes/issues/27973#issuecomment-462185284
-        service_account_name = "hcloud-csi"
+        service_account_name            = "hcloud-csi"
 
         container {
-          name              = "csi-attacher"
-          image             = var.kube_version < 1.16 ? "quay.io/k8scsi/csi-attacher:v1.1.1" : "quay.io/k8scsi/csi-attacher:v2.2.0"
+          name  = "csi-attacher"
+          image = var.kube_version < 1.16 ? local.IMAGE_CSI_ATTACHER_LEGACY : local.IMAGE_CSI_ATTACHER
 
           args = [
             "--csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock",
@@ -53,8 +53,8 @@ resource "kubernetes_stateful_set" "hcloud_csi_controller" {
           for_each = var.kube_version < 1.16 ? [] : [1]
 
           content {
-            name              = "csi-resizer"
-            image             = "quay.io/k8scsi/csi-resizer:v0.3.0"
+            name  = "csi-resizer"
+            image = local.IMAGE_CSI_RESIZER
 
             args = [
               "--csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock",
@@ -77,8 +77,8 @@ resource "kubernetes_stateful_set" "hcloud_csi_controller" {
         }
 
         container {
-          name              = "csi-provisioner"
-          image             = var.kube_version < 1.16 ? "quay.io/k8scsi/csi-provisioner:v1.2.1" : "quay.io/k8scsi/csi-provisioner:v1.6.0"
+          name  = "csi-provisioner"
+          image = var.kube_version < 1.16 ? local.IMAGE_CSI_PROVISIONER_LEGACY : local.IMAGE_CSI_PROVISIONER
 
           args = [
             "--provisioner=csi.hetzner.cloud",
@@ -103,11 +103,11 @@ resource "kubernetes_stateful_set" "hcloud_csi_controller" {
 
         container {
           name              = "hcloud-csi-driver"
-          image             = var.kube_version < 1.16 ? "hetznercloud/hcloud-csi-driver:1.1.5" : "hetznercloud/hcloud-csi-driver:1.4.0"
-          image_pull_policy =  "Always"
+          image             = var.kube_version < 1.16 ? local.IMAGE_HCLOUD_CSI_DRIVER_LEGACY : local.IMAGE_HCLOUD_CSI_DRIVER
+          image_pull_policy = "Always"
 
           env {
-            name = "CSI_ENDPOINT"
+            name  = "CSI_ENDPOINT"
             value = "unix:///var/lib/csi/sockets/pluginproxy/csi.sock"
           }
 
@@ -115,7 +115,7 @@ resource "kubernetes_stateful_set" "hcloud_csi_controller" {
             for_each = var.kube_version < 1.16 ? [] : [1]
 
             content {
-              name = "METRICS_ENDPOINT"
+              name  = "METRICS_ENDPOINT"
               value = "0.0.0.0:9189"
             }
           }
@@ -125,11 +125,19 @@ resource "kubernetes_stateful_set" "hcloud_csi_controller" {
             value_from {
               secret_key_ref {
                 name = "hcloud-csi"
-                key = "token"
+                key  = "token"
               }
             }
           }
-
+          env {
+            name = "KUBE_NODE_NAME"
+            value_from {
+              field_ref {
+                api_version = "v1"
+                field_path  = "spec.nodeName"
+              }
+            }
+          }
           volume_mount {
             name       = "socket-dir"
             mount_path = "/var/lib/csi/sockets/pluginproxy/"
@@ -140,7 +148,7 @@ resource "kubernetes_stateful_set" "hcloud_csi_controller" {
 
             content {
               container_port = 9189
-              name = "metrics"
+              name           = "metrics"
             }
           }
 
@@ -149,8 +157,8 @@ resource "kubernetes_stateful_set" "hcloud_csi_controller" {
 
             content {
               container_port = 9808
-              name = "healthz"
-              protocol = "TCP"
+              name           = "healthz"
+              protocol       = "TCP"
             }
           }
 
@@ -159,8 +167,8 @@ resource "kubernetes_stateful_set" "hcloud_csi_controller" {
 
             content {
               http_get {
-                path   = "/healthz"
-                port   = "healthz"
+                path = "/healthz"
+                port = "healthz"
               }
 
               initial_delay_seconds = 10
@@ -183,8 +191,8 @@ resource "kubernetes_stateful_set" "hcloud_csi_controller" {
 
           content {
             name              = "liveness-probe"
-            image             = "quay.io/k8scsi/livenessprobe:v1.1.0"
-            image_pull_policy =  "Always"
+            image             = local.IMAGE_LIVENESSPROBE
+            image_pull_policy = "Always"
 
             args = [
               "--csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock",

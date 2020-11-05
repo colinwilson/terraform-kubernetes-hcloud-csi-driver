@@ -1,7 +1,7 @@
 # Create Service Account
 resource "kubernetes_service_account" "hcloud_csi" {
   metadata {
-    name = "hcloud-csi"
+    name      = "hcloud-csi"
     namespace = "kube-system"
   }
 }
