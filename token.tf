@@ -1,7 +1,7 @@
 # Create secret containing Hetzner Cloud API token
 resource "kubernetes_secret" "hcloud_token" {
   metadata {
-    name = "hcloud-csi"
+    name      = "hcloud-csi"
     namespace = "kube-system"
   }
 

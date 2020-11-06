@@ -27,7 +27,7 @@ resource "kubernetes_daemonset" "hcloud_csi_node" {
           for_each = var.kube_version < 1.16 ? [] : [1]
 
           content {
-            effect = "NoExecute"
+            effect   = "NoExecute"
             operator = "Exists"
           }
         }
@@ -36,7 +36,7 @@ resource "kubernetes_daemonset" "hcloud_csi_node" {
           for_each = var.kube_version < 1.16 ? [] : [1]
 
           content {
-            effect = "NoSchedule"
+            effect   = "NoSchedule"
             operator = "Exists"
           }
         }
@@ -45,18 +45,18 @@ resource "kubernetes_daemonset" "hcloud_csi_node" {
           for_each = var.kube_version < 1.16 ? [] : [1]
 
           content {
-            key = "CriticalAddonsOnly"
+            key      = "CriticalAddonsOnly"
             operator = "Exists"
           }
         }
 
         automount_service_account_token = true # override Terraform's default false - https://github.com/kubernetes/kubernetes/issues/27973#issuecomment-462185284
-        service_account_name = "hcloud-csi"
-        host_network = var.kube_version < 1.16 ? true : null
+        service_account_name            = "hcloud-csi"
+        host_network                    = var.kube_version < 1.16 ? true : null
 
         container {
           name  = "csi-node-driver-registrar"
-          image = var.kube_version < 1.16 ? "quay.io/k8scsi/csi-node-driver-registrar:v1.1.0" : "quay.io/k8scsi/csi-node-driver-registrar:v1.3.0"
+          image = var.kube_version < 1.16 ? local.IMAGE_CSI_NODE_DRIVER_REGISTRAR_LEGACY : local.IMAGE_CSI_NODE_DRIVER_REGISTRAR
 
           args = [
             "--v=5",
@@ -69,7 +69,7 @@ resource "kubernetes_daemonset" "hcloud_csi_node" {
             value_from {
               field_ref {
                 api_version = "v1"
-                field_path = "spec.nodeName"
+                field_path  = "spec.nodeName"
               }
             }
           }
@@ -91,12 +91,12 @@ resource "kubernetes_daemonset" "hcloud_csi_node" {
         }
 
         container {
-          name  = "hcloud-csi-driver"
-          image = var.kube_version < 1.16 ? "hetznercloud/hcloud-csi-driver:1.1.5" : "hetznercloud/hcloud-csi-driver:1.4.0"
+          name              = "hcloud-csi-driver"
+          image             = var.kube_version < 1.16 ? "hetznercloud/hcloud-csi-driver:1.1.5" : "hetznercloud/hcloud-csi-driver:1.5.1"
           image_pull_policy = "Always"
 
           env {
-            name = "CSI_ENDPOINT"
+            name  = "CSI_ENDPOINT"
             value = "unix:///csi/csi.sock"
           }
 
@@ -104,7 +104,7 @@ resource "kubernetes_daemonset" "hcloud_csi_node" {
             for_each = var.kube_version < 1.16 ? [] : [1]
 
             content {
-              name = "METRICS_ENDPOINT"
+              name  = "METRICS_ENDPOINT"
               value = "0.0.0.0:9189"
             }
           }
@@ -114,14 +114,22 @@ resource "kubernetes_daemonset" "hcloud_csi_node" {
             value_from {
               secret_key_ref {
                 name = "hcloud-csi"
-                key = "token"
+                key  = "token"
               }
             }
           }
-
+          env {
+            name = "KUBE_NODE_NAME"
+            value_from {
+              field_ref {
+                api_version = "v1"
+                field_path  = "spec.nodeName"
+              }
+            }
+          }
           volume_mount {
-            name       = "kubelet-dir"
-            mount_path = "/var/lib/kubelet"
+            name              = "kubelet-dir"
+            mount_path        = "/var/lib/kubelet"
             mount_propagation = "Bidirectional"
           }
 
@@ -144,7 +152,7 @@ resource "kubernetes_daemonset" "hcloud_csi_node" {
 
             content {
               container_port = 9189
-              name = "metrics"
+              name           = "metrics"
             }
           }
 
@@ -153,8 +161,8 @@ resource "kubernetes_daemonset" "hcloud_csi_node" {
 
             content {
               container_port = 9808
-              name = "healthz"
-              protocol = "TCP"
+              name           = "healthz"
+              protocol       = "TCP"
             }
           }
 
@@ -162,10 +170,10 @@ resource "kubernetes_daemonset" "hcloud_csi_node" {
             for_each = var.kube_version < 1.16 ? [] : [1]
 
             content {
-              failure_threshold     = 5
+              failure_threshold = 5
               http_get {
-                path   = "/healthz"
-                port   = "healthz"
+                path = "/healthz"
+                port = "healthz"
               }
 
               initial_delay_seconds = 10
@@ -181,8 +189,8 @@ resource "kubernetes_daemonset" "hcloud_csi_node" {
 
           content {
             name              = "liveness-probe"
-            image             = "quay.io/k8scsi/livenessprobe:v1.1.0"
-            image_pull_policy =  "Always"
+            image             = local.IMAGE_LIVENESSPROBE
+            image_pull_policy = "Always"
 
             args = [
               "--csi-address=/csi/csi.sock",

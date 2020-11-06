@@ -6,7 +6,7 @@ resource "kubernetes_storage_class" "hcloud_volumes" {
       "storageclass.kubernetes.io/is-default-class" = true
     }
   }
-  storage_provisioner = "csi.hetzner.cloud"
-  volume_binding_mode = "WaitForFirstConsumer"
+  storage_provisioner    = "csi.hetzner.cloud"
+  volume_binding_mode    = "WaitForFirstConsumer"
   allow_volume_expansion = var.kube_version < 1.16 ? null : true
 }
