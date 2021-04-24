@@ -1,7 +1,7 @@
 locals {
 
   IMAGE_HCLOUD_CSI_DRIVER_LEGACY = "hetznercloud/hcloud-csi-driver:1.1.5"
-  IMAGE_HCLOUD_CSI_DRIVER        = "hetznercloud/hcloud-csi-driver:1.5.1"
+  IMAGE_HCLOUD_CSI_DRIVER        = "hetznercloud/hcloud-csi-driver:1.5.3"
 
   IMAGE_CSI_NODE_DRIVER_REGISTRAR_LEGACY = "quay.io/k8scsi/csi-node-driver-registrar:v1.1.0"
   IMAGE_CSI_NODE_DRIVER_REGISTRAR        = "quay.io/k8scsi/csi-node-driver-registrar:v1.3.0"
